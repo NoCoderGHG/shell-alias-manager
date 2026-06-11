@@ -15,5 +15,9 @@
   "lbl_alias": "Alias:",
   "lbl_command": "Command:",
   "confirm_delete": "Really delete alias '{alias}'?",
-  "restart_hint": "Please restart."
+  "restart_hint": "Please restart.",
+  "lbl_shell": "Shell:",
+  "shell_dash_hint": "dash does not support aliases",
+  "shell_unknown_hint": "Unknown shell — alias support may vary",
+  "managed_comment": "# Aliases managed by Alias Manager"
 }
