@@ -1,0 +1,19 @@
+{
+  "app_title": "Bash Alias Manager",
+  "col_alias": "Alias",
+  "col_command": "Befehl",
+  "btn_new": "Neu",
+  "btn_edit": "Bearbeiten",
+  "btn_delete": "Löschen",
+  "btn_reload": "Neu laden",
+  "lbl_language": "Sprache:",
+  "lang_de": "Deutsch",
+  "lang_en": "English",
+  "lang_system": "System",
+  "dlg_new_title": "Neuer Alias",
+  "dlg_edit_title": "Alias bearbeiten",
+  "lbl_alias": "Alias:",
+  "lbl_command": "Befehl:",
+  "confirm_delete": "Alias '{alias}' wirklich löschen?",
+  "restart_hint": "Bitte neu starten."
+}
