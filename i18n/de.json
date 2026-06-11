@@ -1,5 +1,5 @@
 {
-  "app_title": "Bash Alias Manager",
+  "app_title": "Shell Alias Manager",
   "col_alias": "Alias",
   "col_command": "Befehl",
   "btn_new": "Neu",
@@ -19,5 +19,6 @@
   "lbl_shell": "Shell:",
   "shell_dash_hint": "dash unterstützt keine Aliases",
   "shell_unknown_hint": "Unbekannte Shell — Alias-Unterstützung unklar",
-  "managed_comment": "# Aliases managed by Alias Manager"
+  "managed_comment": "# Aliases managed by Alias Manager",
+  "shell_not_installed_hint": "Nicht installiert"
 }

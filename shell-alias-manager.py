@@ -47,8 +47,9 @@ SHELLS = {
 
 
 def get_available_shells():
-    # Read /etc/shells and return shells that are both listed and installed
-    available = []
+    # Return all known shells; mark unavailable ones so the UI can grey them out
+    # Order: installed first, then unavailable, following /etc/shells order where possible
+    listed = []
     try:
         with open("/etc/shells") as f:
             for line in f:
@@ -56,15 +57,19 @@ def get_available_shells():
                 if not line or line.startswith("#"):
                     continue
                 name = Path(line).name
-                if name in SHELLS and shutil.which(name):
-                    if name not in available:
-                        available.append(name)
+                if name in SHELLS and name not in listed:
+                    listed.append(name)
     except FileNotFoundError:
         pass
-    # Always include dash if installed, for the warning display
-    if shutil.which("dash") and "dash" not in available:
-        available.append("dash")
-    return available
+    # Add any known shells not in /etc/shells
+    for name in SHELLS:
+        if name not in listed:
+            listed.append(name)
+    return listed
+
+
+def is_shell_installed(shell_name):
+    return shutil.which(shell_name) is not None
 
 
 def load_config():
@@ -346,15 +351,18 @@ class AliasManager(Gtk.Window):
         self._update_shell_ui()
 
     def _update_shell_ui(self):
-        # Enable/disable editing based on shell support
+        # Enable/disable editing based on shell support and installation status
         syntax = SHELLS.get(self.current_shell, {}).get("syntax", "none")
-        supported = syntax != "none"
+        installed = is_shell_installed(self.current_shell)
+        supported = syntax != "none" and installed
         self.add_btn.set_sensitive(supported)
         self.edit_btn.set_sensitive(supported)
         self.delete_btn.set_sensitive(supported)
 
         if self.current_shell == "dash":
             self.shell_hint_label.set_text(t(self.strings, "shell_dash_hint"))
+        elif not installed:
+            self.shell_hint_label.set_text(t(self.strings, "shell_not_installed_hint"))
         elif not supported:
             self.shell_hint_label.set_text(t(self.strings, "shell_unknown_hint"))
         else:
