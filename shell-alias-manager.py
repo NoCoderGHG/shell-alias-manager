@@ -209,6 +209,42 @@ def save_aliases_to_file(shell_name, aliases):
         pass
 
 
+def make_menu_button(items, on_select, min_width=150):
+    btn = Gtk.MenuButton()
+    btn.set_size_request(min_width, -1)
+    lbl = Gtk.Label(label=items[0] if items else "")
+    btn.add(lbl)
+    menu = Gtk.Menu()
+
+    def build_menu(items, current=None):
+        for child in menu.get_children():
+            menu.remove(child)
+        group = []
+        active = current if current in items else (items[0] if items else None)
+        for text in items:
+            item = Gtk.RadioMenuItem.new_with_label(group, text)
+            group = item.get_group()
+            if text == active:
+                item.set_active(True)
+            def _on_activate(i, t=text):
+                if i.get_active():
+                    lbl.set_text(t)
+                    on_select(t)
+            item.connect("activate", _on_activate)
+            menu.append(item)
+        menu.show_all()
+        if active:
+            lbl.set_text(active)
+
+    build_menu(items)
+    btn.set_popup(menu)
+
+    def update(new_items, current=None):
+        build_menu(new_items, current)
+
+    return btn, lbl, update
+
+
 class AliasDialog(Gtk.Dialog):
     def __init__(self, parent, title, alias, cmd, strings):
         super().__init__(title=title, transient_for=parent, flags=0)
@@ -279,24 +315,26 @@ class AliasManager(Gtk.Window):
         lang_box = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=5)
         lang_label = Gtk.Label(label=t(self.strings, "lbl_language"))
         lang_box.pack_start(lang_label, False, False, 0)
-        self.lang_combo = Gtk.ComboBoxText()
-        for code, key in [("de", "lang_de"), ("en", "lang_en"), ("system", "lang_system")]:
-            self.lang_combo.append(code, t(self.strings, key))
-        self.lang_combo.set_active_id(self.cfg.get("lang", "system"))
-        self.lang_combo.connect("changed", self._on_lang_changed)
-        lang_box.pack_start(self.lang_combo, False, False, 0)
+        _lang_items = [t(self.strings, k) for k in ["lang_de", "lang_en", "lang_system"]]
+        _lang_codes = ["de", "en", "system"]
+        _lang_current = t(self.strings, {"de": "lang_de", "en": "lang_en", "system": "lang_system"}.get(self.cfg.get("lang", "system"), "lang_system"))
+        self.lang_menu_btn, self._lang_lbl, self._lang_update = make_menu_button(
+            _lang_items, lambda txt: self._on_lang_selected(txt, _lang_items, _lang_codes), min_width=130
+        )
+        self._lang_lbl.set_text(_lang_current)
+        lang_box.pack_start(self.lang_menu_btn, False, False, 0)
         top_bar.pack_start(lang_box, False, False, 0)
 
         # Shell selector
         shell_box = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=5)
         shell_label = Gtk.Label(label=t(self.strings, "lbl_shell"))
         shell_box.pack_start(shell_label, False, False, 0)
-        self.shell_combo = Gtk.ComboBoxText()
-        for shell in self.available_shells:
-            self.shell_combo.append(shell, shell)
-        self.shell_combo.set_active_id(self.current_shell)
-        self.shell_combo.connect("changed", self._on_shell_changed)
-        shell_box.pack_start(self.shell_combo, False, False, 0)
+        self.shell_menu_btn, self._shell_lbl, self._shell_update = make_menu_button(
+            self.available_shells, lambda s: self._on_shell_selected(s), min_width=120
+        )
+        if self.current_shell in self.available_shells:
+            self._shell_lbl.set_text(self.current_shell)
+        shell_box.pack_start(self.shell_menu_btn, False, False, 0)
 
         # Hint label for unsupported shells
         self.shell_hint_label = Gtk.Label()
@@ -424,29 +462,29 @@ class AliasManager(Gtk.Window):
     def on_refresh_clicked(self, button):
         self.load_and_populate()
 
-    def _on_shell_changed(self, combo):
-        new_shell = combo.get_active_id()
-        if new_shell and new_shell != self.current_shell:
-            self.current_shell = new_shell
-            self.cfg["shell"] = new_shell
+    def _on_shell_selected(self, shell):
+        if shell and shell != self.current_shell:
+            self.current_shell = shell
+            self.cfg["shell"] = shell
             save_config(self.cfg)
             self._update_shell_ui()
             self.load_and_populate()
 
-    def _on_lang_changed(self, combo):
-        new_lang = combo.get_active_id()
-        if new_lang and new_lang != self.cfg.get("lang"):
-            self.cfg["lang"] = new_lang
-            save_config(self.cfg)
-            new_strings = load_i18n(resolve_lang(new_lang))
-            dialog = Gtk.MessageDialog(
-                transient_for=self, flags=0,
-                message_type=Gtk.MessageType.INFO,
-                buttons=Gtk.ButtonsType.OK,
-                text=t(new_strings, "restart_hint")
-            )
-            dialog.run()
-            dialog.destroy()
+    def _on_lang_selected(self, text, items, codes):
+        if text in items:
+            code = codes[items.index(text)]
+            if code != self.cfg.get("lang"):
+                self.cfg["lang"] = code
+                save_config(self.cfg)
+                new_strings = load_i18n(resolve_lang(code))
+                dialog = Gtk.MessageDialog(
+                    transient_for=self, flags=0,
+                    message_type=Gtk.MessageType.INFO,
+                    buttons=Gtk.ButtonsType.OK,
+                    text=t(new_strings, "restart_hint")
+                )
+                dialog.run()
+                dialog.destroy()
 
 
 if __name__ == "__main__":
