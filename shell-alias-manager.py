@@ -16,6 +16,22 @@ import subprocess
 from pathlib import Path
 
 I18N_DIR = Path(__file__).parent / "i18n"
+
+SUPPORTED_LANGUAGES = {
+    "de": "Deutsch",
+    "en": "English",
+    "fr": "Français",
+    "es": "Español",
+    "it": "Italiano",
+    "pt": "Português",
+    "nl": "Nederlands",
+    "pl": "Polski",
+    "ru": "Русский",
+    "tr": "Türkçe",
+    "zh": "中文",
+    "ja": "日本語",
+}
+
 CONFIG_DIR = Path.home() / ".config" / "alias-manager"
 CONFIG_FILE = CONFIG_DIR / "config.json"
 
@@ -96,7 +112,10 @@ def detect_system_lang():
         loc = ""
     if not loc:
         loc = os.environ.get("LANG", "")
-    return "de" if loc.lower().startswith("de") else "en"
+    code = loc.lower().split("_")[0].split(".")[0]
+    if code in SUPPORTED_LANGUAGES and (I18N_DIR / f"{code}.json").exists():
+        return code
+    return "de" if code == "de" else "en"
 
 
 def resolve_lang(setting):
@@ -121,6 +140,29 @@ def load_i18n(lang):
     for k, v in en.items():
         strings.setdefault(k, v)
     return strings
+
+def build_lang_options(strings):
+    """Liste (code, label) fuer das Sprachmenue. Sprachen ohne eigene
+    i18n-Datei werden mit "(EN)" markiert (Fallback auf Englisch)."""
+    opts = [("system", t(strings, "lang_system")),
+            ("de", t(strings, "lang_de")),
+            ("en", t(strings, "lang_en"))]
+    for code, name in SUPPORTED_LANGUAGES.items():
+        if code in ("de", "en"):
+            continue
+        label = name if (I18N_DIR / f"{code}.json").exists() else f"{name} (EN)"
+        opts.append((code, label))
+    return opts
+
+
+def build_lang_lists(strings):
+    """Wie build_lang_options, aber als getrennte Listen (codes, labels)."""
+    codes, items = [], []
+    for code, label in build_lang_options(strings):
+        codes.append(code)
+        items.append(label)
+    return codes, items
+
 
 
 def t(strings, key, **kwargs):
@@ -315,11 +357,10 @@ class AliasManager(Gtk.Window):
         lang_box = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=5)
         lang_label = Gtk.Label(label=t(self.strings, "lbl_language"))
         lang_box.pack_start(lang_label, False, False, 0)
-        _lang_items = [t(self.strings, k) for k in ["lang_de", "lang_en", "lang_system"]]
-        _lang_codes = ["de", "en", "system"]
-        _lang_current = t(self.strings, {"de": "lang_de", "en": "lang_en", "system": "lang_system"}.get(self.cfg.get("lang", "system"), "lang_system"))
+        _lang_codes, _lang_items = build_lang_lists(self.strings)
+        _lang_current = _lang_items[_lang_codes.index(self.cfg.get("lang", "system"))] if self.cfg.get("lang", "system") in _lang_codes else _lang_items[0]
         self.lang_menu_btn, self._lang_lbl, self._lang_update = make_menu_button(
-            _lang_items, lambda txt: self._on_lang_selected(txt, _lang_items, _lang_codes), min_width=130
+            _lang_items, lambda txt: self._on_lang_selected(txt, _lang_items, _lang_codes), min_width=170
         )
         self._lang_lbl.set_text(_lang_current)
         lang_box.pack_start(self.lang_menu_btn, False, False, 0)
